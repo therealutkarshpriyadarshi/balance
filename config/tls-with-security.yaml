@@ -1,0 +1,108 @@
+# TLS with Security Features Example
+# This example shows a fully secured HTTPS load balancer with rate limiting and protection
+
+mode: http
+listen: ":443"
+
+# TLS Configuration
+tls:
+  enabled: true
+  cert_file: "certs/example.com.crt"
+  key_file: "certs/example.com.key"
+
+  # Strict TLS settings
+  min_version: "1.2"
+  max_version: "1.3"
+  prefer_server_cipher_suites: true
+  session_tickets_disabled: false
+
+  # ALPN protocols
+  alpn_protocols:
+    - "h2"
+    - "http/1.1"
+
+  # Client authentication (optional)
+  client_auth: "none"  # Options: none, request, require, verify, require-and-verify
+  # client_ca_file: "certs/client-ca.crt"
+
+# Security Configuration
+security:
+  # Rate limiting - prevents abuse
+  rate_limit:
+    enabled: true
+    type: "token-bucket"  # or "sliding-window"
+
+    # Token bucket settings: 100 requests/sec with burst of 200
+    requests_per_second: 100.0
+    burst_size: 200
+
+    # Sliding window alternative:
+    # type: "sliding-window"
+    # window_size: "1m"
+    # max_requests: 6000  # 100 req/sec * 60 sec
+
+  # Connection protection - prevents connection floods
+  connection_protection:
+    # Maximum concurrent connections per IP
+    max_connections_per_ip: 100
+
+    # Maximum new connections per second per IP
+    max_connection_rate: 10.0
+
+    # Read timeout to protect against Slowloris attacks
+    read_timeout: "10s"
+
+    # Maximum request size (10 MB)
+    max_request_size: 10485760
+
+    # Maximum header size (1 MB)
+    max_header_size: 1048576
+
+  # IP blocklist - block malicious IPs
+  ip_blocklist:
+    # Permanently blocked IPs
+    blocked_ips:
+      - "192.0.2.100"
+      - "198.51.100.50"
+
+    # Blocked CIDR ranges
+    blocked_cidrs:
+      - "203.0.113.0/24"
+
+# Backend servers
+backends:
+  - name: backend-1
+    address: "localhost:9001"
+    weight: 1
+
+  - name: backend-2
+    address: "localhost:9002"
+    weight: 1
+
+  - name: backend-3
+    address: "localhost:9003"
+    weight: 1
+
+# Load balancing
+load_balancer:
+  algorithm: "weighted-round-robin"
+
+# HTTP configuration
+http:
+  enable_websocket: true
+  enable_http2: true
+  max_idle_conns_per_host: 100
+  idle_conn_timeout: 90s
+
+# Timeouts
+timeouts:
+  connect: 5s
+  read: 30s
+  write: 30s
+  idle: 120s
+
+# Metrics
+metrics:
+  enabled: true
+  listen: ":9090"
+  path: "/metrics"
