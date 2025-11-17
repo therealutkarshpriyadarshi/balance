@@ -223,13 +223,22 @@ func (c *Config) Validate() error {
 
 	// Validate load balancer algorithm
 	validAlgorithms := map[string]bool{
-		"round-robin":           true,
-		"least-connections":     true,
-		"consistent-hash":       true,
-		"weighted-round-robin":  true,
+		"round-robin":                true,
+		"least-connections":          true,
+		"consistent-hash":            true,
+		"bounded-consistent-hash":    true,
+		"weighted-round-robin":       true,
+		"weighted-least-connections": true,
 	}
 	if !validAlgorithms[c.LoadBalancer.Algorithm] {
 		return fmt.Errorf("invalid load balancer algorithm: %s", c.LoadBalancer.Algorithm)
+	}
+
+	// Validate hash key for consistent hashing algorithms
+	if (c.LoadBalancer.Algorithm == "consistent-hash" || c.LoadBalancer.Algorithm == "bounded-consistent-hash") &&
+		c.LoadBalancer.HashKey == "" {
+		// Set default hash key
+		c.LoadBalancer.HashKey = "source-ip"
 	}
 
 	// Validate TLS configuration

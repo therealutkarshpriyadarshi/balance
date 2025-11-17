@@ -1,0 +1,43 @@
+# Balance Proxy - Weighted Load Balancing Example
+# This configuration demonstrates weighted load balancing algorithms
+
+# Proxy mode
+mode: tcp
+
+# Listen address
+listen: ":8080"
+
+# Backend servers with different weights
+backends:
+  - name: backend-1
+    address: "localhost:9001"
+    weight: 1        # Will receive ~16% of traffic (1/6)
+    max_connections: 1000
+
+  - name: backend-2
+    address: "localhost:9002"
+    weight: 2        # Will receive ~33% of traffic (2/6)
+    max_connections: 2000
+
+  - name: backend-3
+    address: "localhost:9003"
+    weight: 3        # Will receive ~50% of traffic (3/6)
+    max_connections: 3000
+
+# Load balancer configuration
+load_balancer:
+  # Use "weighted-round-robin" or "weighted-least-connections"
+  algorithm: weighted-round-robin
+
+# Timeout configuration
+timeouts:
+  connect: 5s
+  read: 30s
+  write: 30s
+  idle: 60s
+
+# Metrics configuration
+metrics:
+  enabled: true
+  listen: ":9090"
+  path: /metrics
