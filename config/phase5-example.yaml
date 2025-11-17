@@ -1,0 +1,136 @@
+# Balance Proxy - Phase 5 Features Example Configuration
+# This configuration demonstrates health checking and resilience features
+
+# Proxy mode: "tcp" or "http"
+mode: http
+
+# Listen address
+listen: ":8080"
+
+# Backend servers
+backends:
+  - name: backend-1
+    address: "localhost:9001"
+    weight: 1
+    max_connections: 1000
+
+  - name: backend-2
+    address: "localhost:9002"
+    weight: 1
+    max_connections: 1000
+
+  - name: backend-3
+    address: "localhost:9003"
+    weight: 1
+    max_connections: 1000
+
+# Load balancer configuration
+load_balancer:
+  algorithm: round-robin
+
+# Health check configuration
+health_check:
+  # Enable active health checking
+  enabled: true
+
+  # Check interval
+  interval: 10s
+
+  # Health check timeout
+  timeout: 3s
+
+  # Number of consecutive failures before marking unhealthy
+  unhealthy_threshold: 3
+
+  # Number of consecutive successes before marking healthy
+  healthy_threshold: 2
+
+  # Type of health check: "tcp", "http", or "https"
+  type: http
+
+  # Path for HTTP/HTTPS health checks
+  path: /health
+
+  # Passive health checks (optional)
+  passive_checks:
+    # Enable passive health checking
+    enabled: true
+
+    # Error rate threshold (0.0-1.0) that triggers unhealthy
+    error_rate_threshold: 0.5
+
+    # Number of consecutive failures to mark unhealthy
+    consecutive_failures: 5
+
+    # Time window for tracking failures
+    window: 1m
+
+# Resilience configuration
+resilience:
+  # Circuit breaker configuration
+  circuit_breaker:
+    # Enable circuit breaker
+    enabled: true
+
+    # Number of failures before opening the circuit
+    max_failures: 5
+
+    # Timeout before attempting recovery (half-open state)
+    timeout: 60s
+
+    # Maximum concurrent requests in half-open state
+    max_concurrent_requests: 1
+
+  # Retry configuration
+  retry:
+    # Enable retry logic
+    enabled: true
+
+    # Maximum number of retry attempts
+    max_attempts: 3
+
+    # Initial backoff delay
+    initial_delay: 100ms
+
+    # Maximum backoff delay
+    max_delay: 10s
+
+    # Backoff multiplier for exponential backoff
+    multiplier: 2.0
+
+    # Jitter factor (0.0-1.0) for randomization
+    jitter: 0.1
+
+# Timeout configuration
+timeouts:
+  # Connection timeout
+  connect: 5s
+
+  # Read timeout
+  read: 30s
+
+  # Write timeout
+  write: 30s
+
+  # Idle connection timeout
+  idle: 60s
+
+# HTTP configuration (for HTTP mode)
+http:
+  # Enable WebSocket proxying
+  enable_websocket: true
+
+  # Enable HTTP/2 support
+  enable_http2: true
+
+  # Maximum idle connections per backend
+  max_idle_conns_per_host: 100
+
+  # Idle connection timeout
+  idle_conn_timeout: 90s
+
+# Metrics configuration
+metrics:
+  enabled: true
+  listen: ":9090"
+  path: /metrics

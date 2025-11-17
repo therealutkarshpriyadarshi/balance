@@ -46,7 +46,31 @@ load_balancer:
 #   timeout: 3s
 #   unhealthy_threshold: 3
 #   healthy_threshold: 2
-#   path: /health  # For HTTP mode only
+#   type: tcp  # "tcp", "http", or "https"
+#   path: /health  # For HTTP/HTTPS checks only
+#   # Passive health checks (optional)
+#   passive_checks:
+#     enabled: true
+#     error_rate_threshold: 0.5
+#     consecutive_failures: 5
+#     window: 1m
+
+# Resilience configuration (optional)
+# resilience:
+#   # Circuit breaker
+#   circuit_breaker:
+#     enabled: true
+#     max_failures: 5
+#     timeout: 60s
+#     max_concurrent_requests: 1
+#   # Retry logic
+#   retry:
+#     enabled: true
+#     max_attempts: 3
+#     initial_delay: 100ms
+#     max_delay: 10s
+#     multiplier: 2.0
+#     jitter: 0.1
 
 # Timeout configuration
 timeouts:

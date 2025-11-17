@@ -78,11 +78,21 @@ See [PHASE3.md](PHASE3.md) for detailed documentation.
 
 See [PHASE4.md](PHASE4.md) for detailed documentation.
 
+#### Phase 5 - ✅ Implemented
+
+- ✅ **Active Health Checks**: TCP, HTTP, and HTTPS health checks
+- ✅ **Passive Health Checks**: Automatic failure detection and tracking
+- ✅ **Backend State Management**: State machine with healthy/unhealthy/draining states
+- ✅ **Circuit Breaker**: Prevent cascading failures with automatic recovery
+- ✅ **Retry Logic**: Exponential backoff with jitter and retry budgets
+- ✅ **Timeout Management**: Request, connect, read, and write timeouts
+
+See [PHASE5.md](PHASE5.md) for detailed documentation.
+
 ### Coming Soon
 
 | Phase | Feature | Timeline |
 |-------|---------|----------|
-| 5 | Health checks, circuit breaking | Weeks 9-10 |
 | 6 | Advanced features, connection pooling, observability | Weeks 11-12 |
 | 7 | Performance optimization, optional xDS | Weeks 13-14 |
 | 8 | Production release, comprehensive docs | Weeks 15-16 |
