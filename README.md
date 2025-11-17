@@ -37,7 +37,9 @@ Balance is inspired by industry-standard proxies like [Envoy](https://www.envoyp
 
 ## ✨ Features
 
-### Current Features (Phase 1 - ✅ Implemented)
+### Current Features
+
+#### Phase 1 - ✅ Implemented
 
 - ✅ **TCP (Layer 4) Proxy**: Fast TCP connection forwarding
 - ✅ **Load Balancing**: Round-robin and least-connections algorithms
@@ -46,11 +48,19 @@ Balance is inspired by industry-standard proxies like [Envoy](https://www.envoyp
 - ✅ **Graceful Shutdown**: Zero connection drops on shutdown
 - ✅ **Statistics**: Connection and traffic metrics
 
+#### Phase 2 - ✅ Implemented
+
+- ✅ **Weighted Load Balancing**: Weighted round-robin and weighted least-connections
+- ✅ **Consistent Hashing**: Hash ring with virtual nodes for session persistence
+- ✅ **Bounded Load**: Consistent hashing with load protection
+- ✅ **Session Affinity**: IP-based sticky sessions
+
+See [PHASE2.md](PHASE2.md) for detailed documentation.
+
 ### Coming Soon
 
 | Phase | Feature | Timeline |
 |-------|---------|----------|
-| 2 | Consistent hashing, weighted algorithms | Weeks 3-4 |
 | 3 | HTTP/HTTPS proxy, HTTP/2, WebSocket | Weeks 5-6 |
 | 4 | TLS termination, SNI support | Weeks 7-8 |
 | 5 | Health checks, circuit breaking | Weeks 9-10 |

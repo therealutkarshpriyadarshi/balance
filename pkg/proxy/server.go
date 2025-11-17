@@ -51,6 +51,14 @@ func NewTCPServer(cfg *config.Config) (*Server, error) {
 		balancer = lb.NewRoundRobin(pool)
 	case "least-connections":
 		balancer = lb.NewLeastConnections(pool)
+	case "weighted-round-robin":
+		balancer = lb.NewWeightedRoundRobin(pool)
+	case "weighted-least-connections":
+		balancer = lb.NewWeightedLeastConnections(pool)
+	case "consistent-hash":
+		balancer = lb.NewConsistentHash(pool, lb.DefaultVirtualNodes, cfg.LoadBalancer.HashKey)
+	case "bounded-consistent-hash":
+		balancer = lb.NewBoundedLoadConsistentHash(pool, lb.DefaultVirtualNodes, cfg.LoadBalancer.HashKey, 1.25)
 	default:
 		return nil, fmt.Errorf("unsupported load balancer algorithm: %s", cfg.LoadBalancer.Algorithm)
 	}
@@ -121,14 +129,38 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 	s.activeConnections.Add(1)
 	defer s.activeConnections.Add(-1)
 
+	// Extract client IP for consistent hashing and session affinity
+	clientIP := ""
+	if tcpAddr, ok := clientConn.RemoteAddr().(*net.TCPAddr); ok {
+		clientIP = tcpAddr.IP.String()
+	}
+
 	// Select a backend using load balancer
-	selectedBackend := s.balancer.Select()
+	var selectedBackend *backend.Backend
+
+	// Check if the balancer supports key-based selection
+	switch balancer := s.balancer.(type) {
+	case interface{ SelectWithKey(string) *backend.Backend }:
+		// Use consistent hash with client IP
+		selectedBackend = balancer.SelectWithKey(clientIP)
+	case interface{ SelectWithClientIP(string) *backend.Backend }:
+		// Use session affinity with client IP
+		selectedBackend = balancer.SelectWithClientIP(clientIP)
+	default:
+		// Use standard selection
+		selectedBackend = s.balancer.Select()
+	}
+
 	if selectedBackend == nil {
 		log.Printf("No healthy backend available")
 		return
 	}
 
-	log.Printf("Routing connection to backend: %s", selectedBackend.Address())
+	// Track connection for this backend
+	selectedBackend.IncrementConnections()
+	defer selectedBackend.DecrementConnections()
+
+	log.Printf("Routing connection from %s to backend: %s", clientIP, selectedBackend.Address())
 
 	// Connect to backend with timeout
 	dialer := net.Dialer{
