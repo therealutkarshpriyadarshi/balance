@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+balance
+bin/
+*.test
+*.out
+
+# Documentation
+*.md
+docs/
+
+# Tests
+tests/
+benchmark/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'balance'
+    static_configs:
+      - targets: ['balance:9090']
+        labels:
+          instance: 'balance-lb'
+          environment: 'docker'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
