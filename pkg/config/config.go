@@ -36,6 +36,9 @@ type Config struct {
 
 	// Metrics configuration
 	Metrics MetricsConfig `yaml:"metrics"`
+
+	// Security configuration
+	Security *SecurityConfig `yaml:"security,omitempty"`
 }
 
 // Backend represents a backend server configuration
@@ -67,14 +70,144 @@ type TLSConfig struct {
 	// Enabled enables TLS termination
 	Enabled bool `yaml:"enabled"`
 
+	// Certificates is a list of certificate configurations for multi-domain support
+	Certificates []CertificateConfig `yaml:"certificates,omitempty"`
+
+	// CertFile path to certificate file (deprecated - use Certificates instead)
+	CertFile string `yaml:"cert_file,omitempty"`
+
+	// KeyFile path to private key file (deprecated - use Certificates instead)
+	KeyFile string `yaml:"key_file,omitempty"`
+
+	// MinVersion minimum TLS version (e.g., "1.0", "1.1", "1.2", "1.3")
+	MinVersion string `yaml:"min_version,omitempty"`
+
+	// MaxVersion maximum TLS version (e.g., "1.3")
+	MaxVersion string `yaml:"max_version,omitempty"`
+
+	// CipherSuites is a list of enabled cipher suites (empty = use secure defaults)
+	CipherSuites []string `yaml:"cipher_suites,omitempty"`
+
+	// PreferServerCipherSuites controls whether server cipher suite preferences are used
+	PreferServerCipherSuites bool `yaml:"prefer_server_cipher_suites"`
+
+	// SessionTicketsDisabled disables session ticket (resumption) support
+	SessionTicketsDisabled bool `yaml:"session_tickets_disabled"`
+
+	// ClientAuth determines the server's policy for client authentication
+	// Options: "none", "request", "require", "verify", "require-and-verify"
+	ClientAuth string `yaml:"client_auth,omitempty"`
+
+	// ClientCAFile path to client CA certificate file for client authentication
+	ClientCAFile string `yaml:"client_ca_file,omitempty"`
+
+	// ALPN protocols (e.g., ["h2", "http/1.1"])
+	ALPNProtocols []string `yaml:"alpn_protocols,omitempty"`
+
+	// Backend TLS configuration
+	Backend *BackendTLSConfig `yaml:"backend,omitempty"`
+
+	// SNI configuration
+	SNI *SNIConfig `yaml:"sni,omitempty"`
+}
+
+// CertificateConfig represents a single certificate configuration
+type CertificateConfig struct {
 	// CertFile path to certificate file
 	CertFile string `yaml:"cert_file"`
 
 	// KeyFile path to private key file
 	KeyFile string `yaml:"key_file"`
 
-	// MinVersion minimum TLS version (e.g., "1.2", "1.3")
-	MinVersion string `yaml:"min_version"`
+	// Domains is a list of domains this certificate is valid for (optional, auto-detected from cert)
+	Domains []string `yaml:"domains,omitempty"`
+
+	// Default indicates this is the default certificate
+	Default bool `yaml:"default,omitempty"`
+}
+
+// BackendTLSConfig represents TLS configuration for backend connections
+type BackendTLSConfig struct {
+	// Enabled enables TLS for backend connections
+	Enabled bool `yaml:"enabled"`
+
+	// InsecureSkipVerify controls whether to verify backend certificates (for testing only)
+	InsecureSkipVerify bool `yaml:"insecure_skip_verify"`
+
+	// CAFile path to CA certificate file for backend verification
+	CAFile string `yaml:"ca_file,omitempty"`
+
+	// ClientCertFile path to client certificate file for mTLS
+	ClientCertFile string `yaml:"client_cert_file,omitempty"`
+
+	// ClientKeyFile path to client private key file for mTLS
+	ClientKeyFile string `yaml:"client_key_file,omitempty"`
+}
+
+// SNIConfig represents SNI routing configuration
+type SNIConfig struct {
+	// Routes maps SNI hostnames to backend names
+	Routes map[string][]string `yaml:"routes,omitempty"`
+}
+
+// SecurityConfig represents security configuration
+type SecurityConfig struct {
+	// RateLimit configuration
+	RateLimit *RateLimitConfig `yaml:"rate_limit,omitempty"`
+
+	// ConnectionProtection configuration
+	ConnectionProtection *ConnectionProtectionConfig `yaml:"connection_protection,omitempty"`
+
+	// IPBlocklist configuration
+	IPBlocklist *IPBlocklistConfig `yaml:"ip_blocklist,omitempty"`
+}
+
+// RateLimitConfig represents rate limiting configuration
+type RateLimitConfig struct {
+	// Enabled enables rate limiting
+	Enabled bool `yaml:"enabled"`
+
+	// Type: "token-bucket" or "sliding-window"
+	Type string `yaml:"type"`
+
+	// RequestsPerSecond for token bucket rate limiting
+	RequestsPerSecond float64 `yaml:"requests_per_second,omitempty"`
+
+	// BurstSize for token bucket (max tokens)
+	BurstSize int64 `yaml:"burst_size,omitempty"`
+
+	// WindowSize for sliding window rate limiting (e.g., "1m", "1h")
+	WindowSize string `yaml:"window_size,omitempty"`
+
+	// MaxRequests for sliding window rate limiting
+	MaxRequests int64 `yaml:"max_requests,omitempty"`
+}
+
+// ConnectionProtectionConfig represents connection protection configuration
+type ConnectionProtectionConfig struct {
+	// MaxConnectionsPerIP limits concurrent connections per IP
+	MaxConnectionsPerIP int `yaml:"max_connections_per_ip"`
+
+	// MaxConnectionRate limits new connections per second per IP
+	MaxConnectionRate float64 `yaml:"max_connection_rate"`
+
+	// ReadTimeout for reading request headers (Slowloris protection)
+	ReadTimeout string `yaml:"read_timeout"`
+
+	// MaxRequestSize limits the maximum request size in bytes
+	MaxRequestSize int64 `yaml:"max_request_size"`
+
+	// MaxHeaderSize limits the maximum header size in bytes
+	MaxHeaderSize int64 `yaml:"max_header_size"`
+}
+
+// IPBlocklistConfig represents IP blocklist configuration
+type IPBlocklistConfig struct {
+	// BlockedIPs is a list of permanently blocked IPs
+	BlockedIPs []string `yaml:"blocked_ips,omitempty"`
+
+	// BlockedCIDRs is a list of blocked CIDR ranges
+	BlockedCIDRs []string `yaml:"blocked_cidrs,omitempty"`
 }
 
 // HealthCheckConfig represents health check settings
@@ -303,11 +436,54 @@ func (c *Config) Validate() error {
 
 	// Validate TLS configuration
 	if c.TLS != nil && c.TLS.Enabled {
-		if c.TLS.CertFile == "" {
-			return fmt.Errorf("TLS cert_file is required when TLS is enabled")
+		// Check for either new-style certificates or old-style cert/key files
+		if len(c.TLS.Certificates) == 0 && (c.TLS.CertFile == "" || c.TLS.KeyFile == "") {
+			return fmt.Errorf("TLS certificates or cert_file/key_file is required when TLS is enabled")
 		}
-		if c.TLS.KeyFile == "" {
-			return fmt.Errorf("TLS key_file is required when TLS is enabled")
+
+		// Validate certificate configurations
+		for i, certCfg := range c.TLS.Certificates {
+			if certCfg.CertFile == "" {
+				return fmt.Errorf("TLS certificate %d: cert_file is required", i)
+			}
+			if certCfg.KeyFile == "" {
+				return fmt.Errorf("TLS certificate %d: key_file is required", i)
+			}
+		}
+
+		// Validate TLS versions
+		if c.TLS.MinVersion != "" {
+			validVersions := map[string]bool{"1.0": true, "1.1": true, "1.2": true, "1.3": true}
+			if !validVersions[c.TLS.MinVersion] {
+				return fmt.Errorf("invalid TLS min_version: %s (must be 1.0, 1.1, 1.2, or 1.3)", c.TLS.MinVersion)
+			}
+		}
+
+		if c.TLS.MaxVersion != "" {
+			validVersions := map[string]bool{"1.0": true, "1.1": true, "1.2": true, "1.3": true}
+			if !validVersions[c.TLS.MaxVersion] {
+				return fmt.Errorf("invalid TLS max_version: %s (must be 1.0, 1.1, 1.2, or 1.3)", c.TLS.MaxVersion)
+			}
+		}
+
+		// Validate client auth
+		if c.TLS.ClientAuth != "" {
+			validClientAuth := map[string]bool{
+				"none": true, "request": true, "require": true,
+				"verify": true, "require-and-verify": true,
+			}
+			if !validClientAuth[c.TLS.ClientAuth] {
+				return fmt.Errorf("invalid TLS client_auth: %s", c.TLS.ClientAuth)
+			}
+		}
+	}
+
+	// Validate security configuration
+	if c.Security != nil {
+		if c.Security.RateLimit != nil && c.Security.RateLimit.Enabled {
+			if c.Security.RateLimit.Type != "token-bucket" && c.Security.RateLimit.Type != "sliding-window" {
+				return fmt.Errorf("invalid rate limit type: %s (must be 'token-bucket' or 'sliding-window')", c.Security.RateLimit.Type)
+			}
 		}
 	}
 

@@ -1,0 +1,115 @@
+# Multi-Domain TLS Configuration Example
+# This example shows how to configure multiple certificates for different domains with SNI routing
+
+mode: http
+listen: ":443"
+
+# TLS Configuration with multiple certificates
+tls:
+  enabled: true
+
+  # Multiple certificates for different domains
+  certificates:
+    # Main domain certificate (default)
+    - cert_file: "certs/example.com.crt"
+      key_file: "certs/example.com.key"
+      domains:
+        - "example.com"
+        - "www.example.com"
+      default: true
+
+    # API domain certificate
+    - cert_file: "certs/api.example.com.crt"
+      key_file: "certs/api.example.com.key"
+      domains:
+        - "api.example.com"
+
+    # Wildcard certificate for subdomains
+    - cert_file: "certs/wildcard.example.com.crt"
+      key_file: "certs/wildcard.example.com.key"
+      domains:
+        - "*.example.com"
+
+  # TLS version settings
+  min_version: "1.2"
+  max_version: "1.3"
+
+  # Security settings
+  prefer_server_cipher_suites: true
+  session_tickets_disabled: false
+
+  # ALPN protocols
+  alpn_protocols:
+    - "h2"
+    - "http/1.1"
+
+  # SNI-based routing
+  sni:
+    routes:
+      # Route API traffic to dedicated API backends
+      "api.example.com":
+        - "api-backend-1:8080"
+        - "api-backend-2:8080"
+
+      # Route main site to web backends
+      "www.example.com":
+        - "web-backend-1:8080"
+        - "web-backend-2:8080"
+
+      # Route other subdomains to default backends
+      "*.example.com":
+        - "default-backend-1:8080"
+        - "default-backend-2:8080"
+
+# Backend servers
+backends:
+  # API backends
+  - name: api-backend-1
+    address: "10.0.1.10:8080"
+    weight: 1
+
+  - name: api-backend-2
+    address: "10.0.1.11:8080"
+    weight: 1
+
+  # Web backends
+  - name: web-backend-1
+    address: "10.0.2.10:8080"
+    weight: 1
+
+  - name: web-backend-2
+    address: "10.0.2.11:8080"
+    weight: 1
+
+  # Default backends
+  - name: default-backend-1
+    address: "10.0.3.10:8080"
+    weight: 1
+
+  - name: default-backend-2
+    address: "10.0.3.11:8080"
+    weight: 1
+
+# Load balancing
+load_balancer:
+  algorithm: "least-connections"
+
+# HTTP configuration
+http:
+  enable_websocket: true
+  enable_http2: true
+  max_idle_conns_per_host: 100
+  idle_conn_timeout: 90s
+
+# Timeouts
+timeouts:
+  connect: 5s
+  read: 30s
+  write: 30s
+  idle: 120s
+
+# Metrics
+metrics:
+  enabled: true
+  listen: ":9090"
+  path: "/metrics"
