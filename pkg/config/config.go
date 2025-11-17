@@ -42,6 +42,18 @@ type Config struct {
 
 	// Security configuration
 	Security *SecurityConfig `yaml:"security,omitempty"`
+
+	// ConnectionPool configuration (Phase 6)
+	ConnectionPool *ConnectionPoolConfig `yaml:"connection_pool,omitempty"`
+
+	// Transform configuration (Phase 6)
+	Transform *TransformConfig `yaml:"transform,omitempty"`
+
+	// Tracing configuration (Phase 6)
+	Tracing *TracingConfig `yaml:"tracing,omitempty"`
+
+	// Logging configuration (Phase 6)
+	Logging *LoggingConfig `yaml:"logging,omitempty"`
 }
 
 // Backend represents a backend server configuration
@@ -366,6 +378,75 @@ type Route struct {
 	Priority int `yaml:"priority"`
 }
 
+// ConnectionPoolConfig represents connection pooling configuration (Phase 6)
+type ConnectionPoolConfig struct {
+	// Enabled enables connection pooling
+	Enabled bool `yaml:"enabled"`
+
+	// MaxSize maximum number of connections per backend
+	MaxSize int `yaml:"max_size"`
+
+	// MaxIdleTime maximum time a connection can be idle
+	MaxIdleTime time.Duration `yaml:"max_idle_time"`
+}
+
+// TransformConfig represents request/response transformation configuration (Phase 6)
+type TransformConfig struct {
+	// RequestHeaders to add/set/remove
+	RequestHeaders []HeaderTransform `yaml:"request_headers,omitempty"`
+
+	// ResponseHeaders to add/set/remove
+	ResponseHeaders []HeaderTransform `yaml:"response_headers,omitempty"`
+
+	// StripPrefix removes prefix from request path
+	StripPrefix string `yaml:"strip_prefix,omitempty"`
+
+	// AddPrefix adds prefix to request path
+	AddPrefix string `yaml:"add_prefix,omitempty"`
+}
+
+// HeaderTransform represents a header transformation
+type HeaderTransform struct {
+	// Action: "add", "set", or "remove"
+	Action string `yaml:"action"`
+
+	// Name of the header
+	Name string `yaml:"name"`
+
+	// Value of the header (not used for "remove")
+	Value string `yaml:"value,omitempty"`
+}
+
+// TracingConfig represents distributed tracing configuration (Phase 6)
+type TracingConfig struct {
+	// Enabled enables distributed tracing
+	Enabled bool `yaml:"enabled"`
+
+	// ServiceName for tracing
+	ServiceName string `yaml:"service_name"`
+
+	// Endpoint for trace collector (e.g., Jaeger)
+	Endpoint string `yaml:"endpoint"`
+
+	// SampleRate (0.0-1.0) for sampling traces
+	SampleRate float64 `yaml:"sample_rate"`
+}
+
+// LoggingConfig represents logging configuration (Phase 6)
+type LoggingConfig struct {
+	// Level: "debug", "info", "warn", "error", "fatal"
+	Level string `yaml:"level"`
+
+	// Format: "text" or "json"
+	Format string `yaml:"format"`
+
+	// AddCaller adds caller info to logs
+	AddCaller bool `yaml:"add_caller"`
+
+	// AccessLog enables HTTP access logging
+	AccessLog bool `yaml:"access_log"`
+}
+
 // Load loads configuration from a YAML file
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
@@ -508,6 +589,36 @@ func (c *Config) setDefaults() {
 		}
 		if c.HTTP.IdleConnTimeout == 0 {
 			c.HTTP.IdleConnTimeout = 90 * time.Second
+		}
+	}
+
+	// Phase 6: Connection pool defaults
+	if c.ConnectionPool != nil && c.ConnectionPool.Enabled {
+		if c.ConnectionPool.MaxSize == 0 {
+			c.ConnectionPool.MaxSize = 10
+		}
+		if c.ConnectionPool.MaxIdleTime == 0 {
+			c.ConnectionPool.MaxIdleTime = 5 * time.Minute
+		}
+	}
+
+	// Phase 6: Tracing defaults
+	if c.Tracing != nil && c.Tracing.Enabled {
+		if c.Tracing.ServiceName == "" {
+			c.Tracing.ServiceName = "balance-proxy"
+		}
+		if c.Tracing.SampleRate == 0 {
+			c.Tracing.SampleRate = 1.0
+		}
+	}
+
+	// Phase 6: Logging defaults
+	if c.Logging != nil {
+		if c.Logging.Level == "" {
+			c.Logging.Level = "info"
+		}
+		if c.Logging.Format == "" {
+			c.Logging.Format = "text"
 		}
 	}
 }
