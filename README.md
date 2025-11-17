@@ -57,14 +57,23 @@ Balance is inspired by industry-standard proxies like [Envoy](https://www.envoyp
 
 See [PHASE2.md](PHASE2.md) for detailed documentation.
 
+#### Phase 3 - ✅ Implemented
+
+- ✅ **HTTP/HTTPS Proxy**: Full HTTP/1.1 reverse proxy implementation
+- ✅ **HTTP Routing**: Host-based, path-based, and header-based routing
+- ✅ **HTTP/2 Support**: HTTP/2 server and backend connections with ALPN
+- ✅ **WebSocket Proxying**: Full-duplex WebSocket connection forwarding
+- ✅ **Connection Pooling**: Efficient HTTP connection reuse
+
+See [PHASE3.md](PHASE3.md) for detailed documentation.
+
 ### Coming Soon
 
 | Phase | Feature | Timeline |
 |-------|---------|----------|
-| 3 | HTTP/HTTPS proxy, HTTP/2, WebSocket | Weeks 5-6 |
 | 4 | TLS termination, SNI support | Weeks 7-8 |
 | 5 | Health checks, circuit breaking | Weeks 9-10 |
-| 6 | Connection pooling, rate limiting, metrics | Weeks 11-12 |
+| 6 | Advanced features, rate limiting, metrics | Weeks 11-12 |
 | 7 | Performance optimization, optional xDS | Weeks 13-14 |
 | 8 | Production release, comprehensive docs | Weeks 15-16 |
 

@@ -22,6 +22,9 @@ type Config struct {
 	// LoadBalancer configuration
 	LoadBalancer LoadBalancerConfig `yaml:"load_balancer"`
 
+	// HTTP configuration (for HTTP mode)
+	HTTP *HTTPConfig `yaml:"http,omitempty"`
+
 	// TLS configuration (optional)
 	TLS *TLSConfig `yaml:"tls,omitempty"`
 
@@ -122,6 +125,45 @@ type MetricsConfig struct {
 	Path string `yaml:"path"`
 }
 
+// HTTPConfig represents HTTP-specific configuration
+type HTTPConfig struct {
+	// Routes for HTTP routing (optional, if empty uses default backend pool)
+	Routes []Route `yaml:"routes,omitempty"`
+
+	// EnableWebSocket enables WebSocket proxying
+	EnableWebSocket bool `yaml:"enable_websocket"`
+
+	// EnableHTTP2 enables HTTP/2 support
+	EnableHTTP2 bool `yaml:"enable_http2"`
+
+	// MaxIdleConnsPerHost limits idle connections per backend
+	MaxIdleConnsPerHost int `yaml:"max_idle_conns_per_host"`
+
+	// IdleConnTimeout is the idle connection timeout
+	IdleConnTimeout time.Duration `yaml:"idle_conn_timeout"`
+}
+
+// Route represents an HTTP routing rule
+type Route struct {
+	// Name of the route
+	Name string `yaml:"name"`
+
+	// Host pattern for host-based routing (e.g., "api.example.com")
+	Host string `yaml:"host,omitempty"`
+
+	// PathPrefix for path-based routing (e.g., "/api/")
+	PathPrefix string `yaml:"path_prefix,omitempty"`
+
+	// Headers for header-based routing (e.g., {"X-API-Key": "secret"})
+	Headers map[string]string `yaml:"headers,omitempty"`
+
+	// Backends for this route (backend names)
+	Backends []string `yaml:"backends"`
+
+	// Priority for route matching (higher = higher priority)
+	Priority int `yaml:"priority"`
+}
+
 // Load loads configuration from a YAML file
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
@@ -197,6 +239,24 @@ func (c *Config) setDefaults() {
 	// Default metrics settings
 	if c.Metrics.Enabled && c.Metrics.Path == "" {
 		c.Metrics.Path = "/metrics"
+	}
+
+	// Default HTTP settings
+	if c.Mode == "http" && c.HTTP == nil {
+		c.HTTP = &HTTPConfig{
+			EnableWebSocket:     true,
+			EnableHTTP2:         true,
+			MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:     90 * time.Second,
+		}
+	}
+	if c.HTTP != nil {
+		if c.HTTP.MaxIdleConnsPerHost == 0 {
+			c.HTTP.MaxIdleConnsPerHost = 100
+		}
+		if c.HTTP.IdleConnTimeout == 0 {
+			c.HTTP.IdleConnTimeout = 90 * time.Second
+		}
 	}
 }
 

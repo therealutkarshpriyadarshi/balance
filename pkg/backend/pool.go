@@ -51,6 +51,11 @@ func (p *Pool) Get(name string) *Backend {
 	return nil
 }
 
+// GetByName is an alias for Get (for clarity)
+func (p *Pool) GetByName(name string) *Backend {
+	return p.Get(name)
+}
+
 // All returns all backends
 func (p *Pool) All() []*Backend {
 	p.mu.RLock()
