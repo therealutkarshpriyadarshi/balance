@@ -31,6 +31,9 @@ type Config struct {
 	// Health check configuration (optional)
 	HealthCheck *HealthCheckConfig `yaml:"health_check,omitempty"`
 
+	// Resilience configuration (optional)
+	Resilience *ResilienceConfig `yaml:"resilience,omitempty"`
+
 	// Timeouts configuration
 	Timeouts TimeoutConfig `yaml:"timeouts"`
 
@@ -227,8 +230,74 @@ type HealthCheckConfig struct {
 	// HealthyThreshold number of successes before marking healthy
 	HealthyThreshold int `yaml:"healthy_threshold"`
 
+	// Type of health check: "tcp", "http", or "https"
+	Type string `yaml:"type,omitempty"`
+
 	// Path for HTTP health checks (e.g., "/health")
 	Path string `yaml:"path,omitempty"`
+
+	// PassiveChecks enables passive health checking
+	PassiveChecks *PassiveHealthCheckConfig `yaml:"passive_checks,omitempty"`
+}
+
+// PassiveHealthCheckConfig represents passive health check settings
+type PassiveHealthCheckConfig struct {
+	// Enabled enables passive health checking
+	Enabled bool `yaml:"enabled"`
+
+	// ErrorRateThreshold is the error rate (0.0-1.0) that triggers unhealthy
+	ErrorRateThreshold float64 `yaml:"error_rate_threshold,omitempty"`
+
+	// ConsecutiveFailures is the number of consecutive failures to mark unhealthy
+	ConsecutiveFailures int `yaml:"consecutive_failures,omitempty"`
+
+	// Window is the time window for tracking failures
+	Window time.Duration `yaml:"window,omitempty"`
+}
+
+// ResilienceConfig represents circuit breaker and retry configuration
+type ResilienceConfig struct {
+	// CircuitBreaker configuration
+	CircuitBreaker *CircuitBreakerConfig `yaml:"circuit_breaker,omitempty"`
+
+	// Retry configuration
+	Retry *RetryConfig `yaml:"retry,omitempty"`
+}
+
+// CircuitBreakerConfig represents circuit breaker settings
+type CircuitBreakerConfig struct {
+	// Enabled enables circuit breaker
+	Enabled bool `yaml:"enabled"`
+
+	// MaxFailures before opening the circuit
+	MaxFailures int `yaml:"max_failures,omitempty"`
+
+	// Timeout before attempting recovery (half-open state)
+	Timeout time.Duration `yaml:"timeout,omitempty"`
+
+	// MaxConcurrentRequests in half-open state
+	MaxConcurrentRequests int `yaml:"max_concurrent_requests,omitempty"`
+}
+
+// RetryConfig represents retry policy configuration
+type RetryConfig struct {
+	// Enabled enables retry logic
+	Enabled bool `yaml:"enabled"`
+
+	// MaxAttempts is the maximum number of retry attempts
+	MaxAttempts int `yaml:"max_attempts,omitempty"`
+
+	// InitialDelay is the initial backoff delay
+	InitialDelay time.Duration `yaml:"initial_delay,omitempty"`
+
+	// MaxDelay is the maximum backoff delay
+	MaxDelay time.Duration `yaml:"max_delay,omitempty"`
+
+	// Multiplier is the backoff multiplier
+	Multiplier float64 `yaml:"multiplier,omitempty"`
+
+	// Jitter adds randomness to backoff (0.0-1.0)
+	Jitter float64 `yaml:"jitter,omitempty"`
 }
 
 // TimeoutConfig represents timeout settings
@@ -366,6 +435,56 @@ func (c *Config) setDefaults() {
 		}
 		if c.HealthCheck.HealthyThreshold == 0 {
 			c.HealthCheck.HealthyThreshold = 2
+		}
+		if c.HealthCheck.Type == "" {
+			c.HealthCheck.Type = "tcp"
+		}
+		// Default passive health check settings
+		if c.HealthCheck.PassiveChecks != nil && c.HealthCheck.PassiveChecks.Enabled {
+			if c.HealthCheck.PassiveChecks.ErrorRateThreshold == 0 {
+				c.HealthCheck.PassiveChecks.ErrorRateThreshold = 0.5
+			}
+			if c.HealthCheck.PassiveChecks.ConsecutiveFailures == 0 {
+				c.HealthCheck.PassiveChecks.ConsecutiveFailures = 5
+			}
+			if c.HealthCheck.PassiveChecks.Window == 0 {
+				c.HealthCheck.PassiveChecks.Window = 1 * time.Minute
+			}
+		}
+	}
+
+	// Default resilience settings
+	if c.Resilience != nil {
+		// Circuit breaker defaults
+		if c.Resilience.CircuitBreaker != nil && c.Resilience.CircuitBreaker.Enabled {
+			if c.Resilience.CircuitBreaker.MaxFailures == 0 {
+				c.Resilience.CircuitBreaker.MaxFailures = 5
+			}
+			if c.Resilience.CircuitBreaker.Timeout == 0 {
+				c.Resilience.CircuitBreaker.Timeout = 60 * time.Second
+			}
+			if c.Resilience.CircuitBreaker.MaxConcurrentRequests == 0 {
+				c.Resilience.CircuitBreaker.MaxConcurrentRequests = 1
+			}
+		}
+
+		// Retry defaults
+		if c.Resilience.Retry != nil && c.Resilience.Retry.Enabled {
+			if c.Resilience.Retry.MaxAttempts == 0 {
+				c.Resilience.Retry.MaxAttempts = 3
+			}
+			if c.Resilience.Retry.InitialDelay == 0 {
+				c.Resilience.Retry.InitialDelay = 100 * time.Millisecond
+			}
+			if c.Resilience.Retry.MaxDelay == 0 {
+				c.Resilience.Retry.MaxDelay = 10 * time.Second
+			}
+			if c.Resilience.Retry.Multiplier == 0 {
+				c.Resilience.Retry.Multiplier = 2.0
+			}
+			if c.Resilience.Retry.Jitter == 0 {
+				c.Resilience.Retry.Jitter = 0.1
+			}
 		}
 	}
 
