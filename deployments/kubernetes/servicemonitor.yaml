@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: balance
+  namespace: default
+  labels:
+    app: balance
+spec:
+  selector:
+    matchLabels:
+      app: balance
+  endpoints:
+  - port: admin
+    path: /metrics
+    interval: 15s
+    scrapeTimeout: 10s

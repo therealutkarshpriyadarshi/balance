@@ -1,0 +1,126 @@
+groups:
+  - name: balance_alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: BalanceHighErrorRate
+        expr: |
+          (
+            sum(rate(balance_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(balance_http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: balance
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # High latency alert
+      - alert: BalanceHighLatency
+        expr: |
+          histogram_quantile(0.99,
+            rate(balance_http_request_duration_seconds_bucket[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: balance
+        annotations:
+          summary: "High request latency detected"
+          description: "P99 latency is {{ $value | humanizeDuration }} (threshold: 1s)"
+
+      # Backend down alert
+      - alert: BalanceBackendDown
+        expr: balance_backend_healthy == 0
+        for: 1m
+        labels:
+          severity: warning
+          component: balance
+        annotations:
+          summary: "Backend {{ $labels.backend }} is down"
+          description: "Backend {{ $labels.backend }} has been unhealthy for more than 1 minute"
+
+      # All backends down (critical)
+      - alert: BalanceAllBackendsDown
+        expr: sum(balance_backend_healthy) == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: balance
+        annotations:
+          summary: "All backends are down"
+          description: "No healthy backends available - service is degraded"
+
+      # High connection count
+      - alert: BalanceHighConnections
+        expr: balance_active_connections > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: balance
+        annotations:
+          summary: "High number of active connections"
+          description: "Active connections: {{ $value }} (threshold: 1000)"
+
+      # Memory usage high
+      - alert: BalanceHighMemoryUsage
+        expr: go_memstats_alloc_bytes > 500000000
+        for: 5m
+        labels:
+          severity: warning
+          component: balance
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage: {{ $value | humanize1024 }}B (threshold: 500MB)"
+
+      # Service down
+      - alert: BalanceDown
+        expr: up{job="balance"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: balance
+        annotations:
+          summary: "Balance service is down"
+          description: "Balance instance {{ $labels.instance }} is not reachable"
+
+      # Circuit breaker open
+      - alert: BalanceCircuitBreakerOpen
+        expr: balance_circuit_breaker_state{state="open"} == 1
+        for: 2m
+        labels:
+          severity: warning
+          component: balance
+        annotations:
+          summary: "Circuit breaker is open for {{ $labels.backend }}"
+          description: "Circuit breaker has been open for {{ $labels.backend }} for more than 2 minutes"
+
+      # High retry rate
+      - alert: BalanceHighRetryRate
+        expr: |
+          (
+            sum(rate(balance_backend_retries_total[5m]))
+            /
+            sum(rate(balance_http_requests_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: balance
+        annotations:
+          summary: "High retry rate detected"
+          description: "Retry rate is {{ $value | humanizePercentage }} (threshold: 10%)"
+
+      # Too many goroutines
+      - alert: BalanceHighGoroutineCount
+        expr: go_goroutines > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: balance
+        annotations:
+          summary: "High goroutine count"
+          description: "Goroutine count: {{ $value }} (threshold: 10000) - possible goroutine leak"

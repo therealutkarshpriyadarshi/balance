@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: balance-config
+  namespace: default
+  labels:
+    app: balance
+data:
+  config.yaml: |
+    mode: http
+    listen: ":8080"
+
+    backends:
+      - name: backend-1
+        address: "backend-service:80"
+        weight: 1
+
+      - name: backend-2
+        address: "backend-service:80"
+        weight: 1
+
+      - name: backend-3
+        address: "backend-service:80"
+        weight: 1
+
+    load_balancer:
+      algorithm: round-robin
+
+    timeouts:
+      connect: 5s
+      read: 30s
+      write: 30s
+      idle: 60s
+
+    health_check:
+      enabled: true
+      interval: 10s
+      timeout: 3s
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+      type: http
+      http_path: /
+
+    admin:
+      enabled: true
+      listen: ":9090"
+
+    metrics:
+      enabled: true
+
+    logging:
+      level: info
+      format: json
