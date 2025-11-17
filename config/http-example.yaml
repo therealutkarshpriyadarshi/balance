@@ -1,0 +1,81 @@
+# Balance HTTP Proxy - Example Configuration
+
+# Proxy mode: "http" for Layer 7 HTTP/HTTPS proxying
+mode: http
+
+# Listen address
+listen: ":8080"
+
+# Backend servers
+backends:
+  - name: api-backend-1
+    address: "localhost:9001"
+    weight: 1
+
+  - name: api-backend-2
+    address: "localhost:9002"
+    weight: 1
+
+  - name: web-backend
+    address: "localhost:9003"
+    weight: 1
+
+  - name: admin-backend
+    address: "localhost:9004"
+    weight: 1
+
+# Load balancer configuration
+load_balancer:
+  # Algorithm: "round-robin", "least-connections", "consistent-hash",
+  #            "weighted-round-robin", "weighted-least-connections"
+  algorithm: round-robin
+
+# HTTP-specific configuration
+http:
+  # Enable HTTP/2 support (default: true)
+  enable_http2: true
+
+  # Enable WebSocket proxying (default: true)
+  enable_websocket: true
+
+  # Maximum idle connections per backend host (default: 100)
+  max_idle_conns_per_host: 100
+
+  # Idle connection timeout (default: 90s)
+  idle_conn_timeout: 90s
+
+  # HTTP routing rules (optional)
+  routes:
+    # Route API traffic to API backends
+    - name: api-v1
+      host: api.example.com
+      path_prefix: /v1/
+      backends: [api-backend-1, api-backend-2]
+      priority: 20
+
+    # Route admin traffic (with authentication header)
+    - name: admin
+      path_prefix: /admin/
+      headers:
+        X-Admin-Token: secret-admin-token
+      backends: [admin-backend]
+      priority: 15
+
+    # Route general web traffic
+    - name: web
+      host: www.example.com
+      backends: [web-backend]
+      priority: 10
+
+# Timeout configuration
+timeouts:
+  connect: 5s
+  read: 30s
+  write: 30s
+  idle: 60s
+
+# Metrics configuration (optional)
+metrics:
+  enabled: true
+  listen: ":9090"
+  path: /metrics

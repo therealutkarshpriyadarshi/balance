@@ -1,0 +1,33 @@
+# Balance WebSocket Proxy - Example Configuration
+# Optimized for WebSocket connections
+
+mode: http
+listen: ":8080"
+
+backends:
+  - name: ws-backend-1
+    address: "localhost:9001"
+
+  - name: ws-backend-2
+    address: "localhost:9002"
+
+load_balancer:
+  # Use consistent hashing for sticky WebSocket connections
+  algorithm: consistent-hash
+  hash_key: source-ip
+
+http:
+  # Enable WebSocket support
+  enable_websocket: true
+
+  # HTTP/2 not typically used with WebSockets
+  enable_http2: false
+
+  # Keep connections alive longer for WebSockets
+  idle_conn_timeout: 300s
+
+timeouts:
+  connect: 5s
+  read: 300s   # Long timeout for WebSocket messages
+  write: 300s  # Long timeout for WebSocket messages
+  idle: 600s   # Long idle timeout for WebSocket connections

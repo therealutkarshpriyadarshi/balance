@@ -1,0 +1,29 @@
+# Balance HTTP Proxy - Simple Configuration
+# Minimal HTTP proxy configuration without routing
+
+mode: http
+listen: ":8080"
+
+backends:
+  - name: backend-1
+    address: "localhost:9001"
+
+  - name: backend-2
+    address: "localhost:9002"
+
+  - name: backend-3
+    address: "localhost:9003"
+
+load_balancer:
+  algorithm: round-robin
+
+# HTTP configuration with defaults
+http:
+  enable_http2: true
+  enable_websocket: true
+
+timeouts:
+  connect: 5s
+  read: 30s
+  write: 30s
+  idle: 60s

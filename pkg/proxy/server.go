@@ -22,6 +22,9 @@ type Server struct {
 	pool     *backend.Pool
 	balancer lb.LoadBalancer
 
+	// HTTP server (for HTTP mode)
+	httpServer *HTTPServer
+
 	// Graceful shutdown
 	ctx        context.Context
 	cancelFunc context.CancelFunc
@@ -74,14 +77,16 @@ func NewTCPServer(cfg *config.Config) (*Server, error) {
 	}, nil
 }
 
-// NewHTTPServer creates a new HTTP proxy server
-func NewHTTPServer(cfg *config.Config) (*Server, error) {
-	// TODO: Implement HTTP server in Phase 3
-	return nil, fmt.Errorf("HTTP mode not yet implemented (coming in Phase 3)")
-}
+// NewHTTPServer is now implemented in http.go
 
 // Start starts the proxy server
 func (s *Server) Start() error {
+	// If HTTP server is configured, start it
+	if s.httpServer != nil {
+		return s.httpServer.Start()
+	}
+
+	// Otherwise, start TCP server
 	listener, err := net.Listen("tcp", s.config.Listen)
 	if err != nil {
 		return fmt.Errorf("failed to start listener: %w", err)
@@ -227,6 +232,12 @@ func (s *Server) proxyData(clientConn, backendConn net.Conn) {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() error {
+	// If HTTP server is configured, shut it down
+	if s.httpServer != nil {
+		return s.httpServer.Shutdown()
+	}
+
+	// Otherwise, shutdown TCP server
 	log.Println("Shutting down proxy server...")
 
 	// Stop accepting new connections
@@ -265,10 +276,16 @@ func (s *Server) Shutdown() error {
 
 // Stats returns current server statistics
 func (s *Server) Stats() map[string]interface{} {
+	// If HTTP server is configured, return its stats
+	if s.httpServer != nil {
+		return s.httpServer.Stats()
+	}
+
+	// Otherwise, return TCP stats
 	return map[string]interface{}{
-		"total_connections":   s.totalConnections.Load(),
-		"active_connections":  s.activeConnections.Load(),
+		"total_connections":    s.totalConnections.Load(),
+		"active_connections":   s.activeConnections.Load(),
 		"total_bytes_received": s.totalBytesReceived.Load(),
-		"total_bytes_sent":    s.totalBytesSent.Load(),
+		"total_bytes_sent":     s.totalBytesSent.Load(),
 	}
 }
